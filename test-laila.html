@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>LAILA Test</title>
+  <style>
+    body {
+      background: #0b0b12;
+      color: #fff;
+      font-family: Arial;
+      padding: 40px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    pre {
+      background: #111;
+      padding: 15px;
+      margin-top: 20px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🟣 LAILA API Test</h1>
+
+<button onclick="askLaila()">اسأل ليلى</button>
+
+<pre id="result">النتيجة هتظهر هنا…</pre>
+
+<script>
+async function askLaila() {
+  const result = document.getElementById("result");
+  result.textContent = "⏳ جاري الإرسال...";
+
+  try {
+    const res = await fetch("https://laila-ai-backend.vercel.app/api/laila", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        question: "ما الفرق بين D score و E score في الجمباز الايقاعي؟",
+        lang: "ar"
+      })
+    });
+
+    const data = await res.json();
+    result.textContent = JSON.stringify(data, null, 2);
+
+  } catch (err) {
+    result.textContent = "❌ Error:\n" + err.message;
+  }
+}
+</script>
+
+</body>
+</html>
