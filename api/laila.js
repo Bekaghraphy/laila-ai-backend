@@ -1,58 +1,57 @@
-import fetch from "node-fetch";
+import OpenAI from "openai";
+import archiveContext from "../data/archive-context.js";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export default async function handler(req, res) {
-  // ===== CORS =====
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
   if (req.method === "GET") {
     return res.json({
       message: "LAILA AI is running. Send a POST request with { question }",
     });
   }
 
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const { question, lang } = req.body;
+
+  if (!question) {
+    return res.status(400).json({ error: "Question is required" });
+  }
+
   try {
-    const { question, lang = "ar", context = "" } = req.body;
+    const systemPrompt = `
+You are LAILA, an AI assistant specialized ONLY in Rhythmic Gymnastics.
 
-    if (!question) {
-      return res.status(400).json({ error: "No question provided" });
-    }
+Rules:
+- Answer ONLY questions related to rhythmic gymnastics.
+- Use the archive context below as your main source.
+- If the question is unclear, ask for clarification.
+- If the question is outside rhythmic gymnastics, politely say so.
+- Default language: Arabic.
+- If lang = "en", answer in English.
+- Be clear, educational, and friendly.
+- Avoid saying "I don't know" unless information truly does not exist.
+`;
 
-    const systemPrompt =
-      lang === "ar"
-        ? `أنت مساعد متخصص في الجمباز الإيقاعي. أجب بدقة وبأسلوب واضح اعتمادًا على الأرشيف التالي:\n${context}`
-        : `You are a rhythmic gymnastics expert. Answer clearly based on this archive:\n${context}`;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: question },
-        ],
-        temperature: 0.3,
-      }),
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "system", content: archiveContext },
+        { role: "user", content: question },
+      ],
+      temperature: 0.3,
     });
 
-    const data = await response.json();
+    const answer = completion.choices[0].message.content;
 
-    return res.json({
-      answer: data.choices?.[0]?.message?.content || "No answer",
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      error: "AI request failed",
-    });
+    res.status(200).json({ answer });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "AI processing error" });
   }
 }
