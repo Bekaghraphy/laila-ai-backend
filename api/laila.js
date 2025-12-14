@@ -1,42 +1,54 @@
 import OpenAI from "openai";
 import { archiveContext } from "../data/archive-context.js";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(200).json({
+      message: "LAILA AI is running. Send a POST request with { question }",
+    });
   }
 
-  const { question, lang } = req.body;
+  try {
+    const { question, lang } = req.body;
 
-  const prompt = `
-You are LAILA, an AI assistant specialized ONLY in rhythmic gymnastics.
+    if (!question) {
+      return res.status(400).json({ error: "Question is required" });
+    }
 
-ARCHIVE CONTENT:
+    const systemPrompt = `
+You are LAILA, an expert AI assistant specialized in Rhythmic Gymnastics.
+Use the following archive as your knowledge base.
+
+Archive:
 ${archiveContext}
 
-RULES:
-- Answer only from the archive content.
-- If the answer is not available, say so clearly.
-- Answer in ${lang}.
-- Keep the answer concise and clear.
-
-QUESTION:
-${question}
+Rules:
+- Answer clearly and concisely.
+- If the question is outside rhythmic gymnastics, say you don't know.
+- Respond in Arabic if lang = "ar", otherwise English.
 `;
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question },
+      ],
+      temperature: 0.4,
     });
 
-    res.json({ answer: completion.choices[0].message.content });
-  } catch (err) {
-    res.status(500).json({ error: "AI error" });
+    res.status(200).json({
+      answer: completion.choices[0].message.content,
+    });
+  } catch (error) {
+    console.error("LAILA API ERROR:", error);
+    res.status(500).json({
+      error: "AI processing failed",
+      details: error.message,
+    });
   }
 }
