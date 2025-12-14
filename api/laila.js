@@ -1,8 +1,7 @@
 // api/laila.js
-import { buildArchiveContext } from "../data/build-context.js";
 import OpenAI from "openai";
+import { buildArchiveContext } from "../data/build-context.js";
 import archiveContext from "../data/archive-context.js";
-
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // روابط الأرشيف داخل موقعك (Front-end)
@@ -95,7 +94,7 @@ ${question}
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "system", content: archiveContext },
+        { role: "system", content: buildArchiveContext() },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.25,
